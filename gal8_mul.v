@@ -1,5 +1,11 @@
 /*
-Source: Wikipedia
+gal8_mul.v
+
+ * Multiplies two numbers in the GF(2^8) finite field defined 
+ * by the polynomial x^8 + x^4 + x^3 + x + 1 = 0
+ * using the Russian Peasant Multiplication algorithm
+
+EXPLANATION
 Run the following loop 8 times (once per bit). It is OK to stop when a or b is zero before an iteration:
     1. If the rightmost bit of b is set, exclusive OR the product p by the value of a. This is polynomial addition.
     2. Shift b one bit to the right, discarding the rightmost bit, and making the leftmost bit have a value of zero. This divides the polynomial by x, discarding the x0 term.
@@ -7,6 +13,7 @@ Run the following loop 8 times (once per bit). It is OK to stop when a or b is z
     4. Shift a one bit to the left, discarding the leftmost bit, and making the new rightmost bit zero. This multiplies the polynomial by x, but we still need to take account of carry which represented the coefficient of x7.
     5. If carry had a value of one, exclusive or a with the hexadecimal number 0x1b (00011011 in binary). 0x1b corresponds to the irreducible polynomial with the high term eliminated. Conceptually, the high term of the irreducible polynomial and carry add modulo 2 to 0.
 p now has the product
+Source: Wikipedia
 
 My notes:
 The conditional bit shifting and "looping" mentioned above has been parallelised resulting in a purely combinational module
