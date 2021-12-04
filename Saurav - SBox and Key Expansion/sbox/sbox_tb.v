@@ -19,7 +19,6 @@ module gf4_inv_tb;
     always @(posedge clk) begin
         if (cnt < 256) begin
             a <= cnt;
-            res <= sbox(a);
             //expected_res <= t[cnt + 1];
         end
         else $finish;
@@ -29,8 +28,8 @@ module gf4_inv_tb;
 
     
     always @(negedge clk) begin
-        if (res == expected_res) $display("PASS %d", res);
-        else $display("FAIL %d %d %d", a, res, expected_res);
+        if (sbox(a) == expected_res) $display("PASS %d", sbox(a));
+        else $display("FAIL %d %d %d", a, sbox(a), expected_res);
     end
     
 function automatic [7:0] sbox;
