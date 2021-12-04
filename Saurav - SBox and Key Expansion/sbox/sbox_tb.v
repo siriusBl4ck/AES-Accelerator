@@ -88,7 +88,7 @@ function automatic [3:0] gf4_sq;
     end
 endfunction
 
-function automatic gf4_sq_mul_v;
+function automatic [3:0] gf4_sq_mul_v;
     input [3:0] a;
 
     reg [3:0] a_sq;
