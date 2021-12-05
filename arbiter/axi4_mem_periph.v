@@ -65,14 +65,6 @@ module axi4_mem_periph #(
 	seq_mult M ( .p(p_M), .rdy(rdy_M), .clk(clk), .reset(reset_M), .a(a_M), .b(b_M));
 	///
 
-	task handle_axi_arvalid; begin
-		mem_axi_arready <= 1;
-		latched_raddr = mem_axi_araddr;
-		latched_rinsn = mem_axi_arprot[2];
-		latched_raddr_en = 1;
-		fast_raddr <= 1;
-	end endtask
-
 	task handle_axi_awvalid; begin
 		mem_axi_awready <= 1;
 		latched_waddr = mem_axi_awaddr;
@@ -88,18 +80,29 @@ module axi4_mem_periph #(
 		fast_wdata <= 1;
 	end endtask
 
+	task handle_axi_arvalid; begin
+		mem_axi_arready <= 1;
+		latched_raddr = mem_axi_araddr;
+		latched_rinsn = mem_axi_arprot[2];
+		latched_raddr_en = 1;
+		fast_raddr <= 1;
+	end endtask
+
 	task handle_axi_rvalid; begin
 		if (verbose)
 			$display("RD: ADDR=%08x DATA=%08x%s", latched_raddr, memory[latched_raddr >> 2], latched_rinsn ? " INSN" : "");
+
 		if (!arb_en) begin
 			if (latched_raddr < 128*1024) begin
 				mem_axi_rdata <= memory[latched_raddr >> 2];
 				mem_axi_rvalid <= 1;
 				latched_raddr_en = 0;
 			end
+			//output of aes
 		end else
+
 		if (arb_en) begin
-			if ((latched_raddr >= aes_dest_addr_start) && (latched_raddr < aes_dest_addr_start+128)) begin //start with dest_end
+			if ((latched_raddr >= aes_dest_addr_start) && (latched_raddr < aes_dest_addr_start+16)) begin //start with dest_end
 				if (out_ready) begin
 					mem_axi_rdata <= aes_out[latched_raddr-aes_dest_addr_start];
 					mem_axi_rvalid <= 1;
@@ -109,17 +112,18 @@ module axi4_mem_periph #(
 					latched_raddr_en = 1;
 				end
 			end else
-			/*if ((latched_raddr >= aes_dest_addr_start + 128) && (latched_raddr < aes_dest_addr_end)) begin
+
+			if ((latched_raddr >= aes_dest_addr_start + 16) && (latched_raddr < aes_dest_addr_end)) begin
 				if (in_enable) begin //check
 					latched_custom_inp = aes_addr_start+{(latchd_raddr-aes_dest_addr_start)[31:4],4'b0};
-					input_switch <= 1;
-				end 
-				r_cache_addr <= aes_addr_start+{(latchd_raddr-aes_dest_addr_start)[31:4],4'b0};
-				r_cache_valid <= 1;
+					input_switch <= 1; ////
+					temp = (aes_addr_start+{(latchd_raddr-aes_dest_addr_start)[31:4],4'b0}); //will be treated as a wire
+					r_cache_addr[temp[8:4]] <= temp[13:9]; ///
+					r_cache_valid[temp[8:4]] <= 1;
+				end
 				mem_axi_rvalid <= 0;
 				latched_raddr_en = 1;	
 			end else	//Can reduce the cycle by putting flag  in other one		
-					*/
 
 			if (latched_raddr < 128*1024) begin
 				mem_axi_rdata <= memory[latched_raddr >> 2];
@@ -153,14 +157,18 @@ module axi4_mem_periph #(
 		end
 	end endtask
 
-	task r_arb; begin
+	task my_r_arb; begin
 		mem_axi_arready <=  1; //check
-		latched_raddr = aes_addr_start + (rcounter<<2);
-		latched_raddr_en = 1;
-		latched_rinsn = mem_axi_arprot[2]; //maye
-		rcounter <= rcounter + 1;
-		if (rcounter == 3) latcheed_rarb_pass = 0;
-		latched_rarb_send = 1;
+		if ((counter==0) && r_cache_valid[aes_addr_start[8:4]] && (r_cache_addr[aes_addr_start[8:4]] == aes_addr_start[13:9])) begin
+				latched_rarb_en = 0; //see where aes_addr_start is changing
+		end else begin
+			latched_raddr = aes_addr_start + (rcounter<<2);
+			latched_raddr_en = 1;
+			latched_rinsn = mem_axi_arprot[2]; //maybe
+			rcounter <= rcounter + 1;
+			if (rcounter == 3) latched_rarb_en = 0;
+			latched_rarb_send = 1;
+		end
 	end endtask
 
 	task handle_axi_bvalid; begin
@@ -300,14 +308,14 @@ module axi4_mem_periph #(
 	end endtask
 
 	always @(negedge clk) begin
-		if ((!latched_rar_pass) && mem_axi_arvalid && !(latched_raddr_en || fast_raddr)) handle_axi_arvalid;
+		if ((!latched_rar_en) && mem_axi_arvalid && !(latched_raddr_en || fast_raddr)) handle_axi_arvalid;
 		if ((!latched_warb_pass) && mem_axi_awvalid && !(latched_waddr_en || fast_waddr)) handle_axi_awvalid;
 		if ((!latched_warb_pass) && mem_axi_wvalid  && !(latched_wdata_en || fast_wdata)) handle_axi_wvalid;
 		if (!mem_axi_rvalid && latched_raddr_en) handle_axi_rvalid;
 		if (!mem_axi_bvalid && latched_waddr_en && latched_wdata_en) handle_axi_bvalid;
 		if (arb_enn && (!latched_warb_pass) && (out_ready)) my_arb_en;
 		if ((!latched_warb_send) && (latched_warb_pass)) my_w_arb;
-		if ((latched_rar_pass) && (!latched_rarb_send)) my_r_arb;
+		if ((latched_rar_en) && (!latched_rarb_send)) my_r_arb;
 	end
 
 	always @(posedge clk) begin
