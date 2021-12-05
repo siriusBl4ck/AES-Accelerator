@@ -114,15 +114,23 @@ module axi4_mem_periph #(
 			end else
 
 			if ((latched_raddr >= aes_dest_addr_start + 16) && (latched_raddr < aes_dest_addr_end)) begin
+				temp = (aes_addr_start+{(latchd_raddr-aes_dest_addr_start)[31:4],4'b0}); //will be treated as a wire
+
+				if (r_cache_valid_in[temp[8:4]] && r_cache_valid_out[temp[8:4]]) begin
+					mem_axi_rdata <= memory[latched_raddr >> 2];
+					mem_axi_rvalid <= 1;
+					latched_raddr_en = 0;
+				end else
 				if (in_enable) begin //check
-					latched_custom_inp = aes_addr_start+{(latchd_raddr-aes_dest_addr_start)[31:4],4'b0};
+					latched_custom_inp = temp;
 					input_switch <= 1; ////
-					temp = (aes_addr_start+{(latchd_raddr-aes_dest_addr_start)[31:4],4'b0}); //will be treated as a wire
-					r_cache_addr[temp[8:4]] <= temp[13:9]; ///
-					r_cache_valid[temp[8:4]] <= 1;
+					r_cache_valid_in[temp[8:4]] <= 1;  //here i took index as 5 bits!!
+					mem_axi_rvalid <= 0;
+					latched_raddr_en = 1;	
+				end else begin
+					mem_axi_rvalid <= 0;
+					latched_raddr_en = 1;
 				end
-				mem_axi_rvalid <= 0;
-				latched_raddr_en = 1;	
 			end else	//Can reduce the cycle by putting flag  in other one		
 
 			if (latched_raddr < 128*1024) begin
@@ -158,9 +166,9 @@ module axi4_mem_periph #(
 	end endtask
 
 	task my_r_arb; begin
-		mem_axi_arready <=  1; //check
-		if ((counter==0) && r_cache_valid[aes_addr_start[8:4]] && (r_cache_addr[aes_addr_start[8:4]] == aes_addr_start[13:9])) begin
+		if ((counter==0) && r_cache_valid[aes_addr_start[8:4]]) begin
 				latched_rarb_en = 0; //see where aes_addr_start is changing
+				r_cache_valid[aes_addr_start[8:4]] <= 0;
 		end else begin
 			latched_raddr = aes_addr_start + (rcounter<<2);
 			latched_raddr_en = 1;
@@ -209,6 +217,29 @@ module axi4_mem_periph #(
 			//	aes_addr_start <= aes_addr_start+128;
 			//This should happen auto every cycle
 			if (!latched_warb_send) begin
+				if ((latched_waddr >= aes_addr_start+16) && (latched_waddr < aes_addr_end)) begin
+					if (in_enable) begin
+						temp = aes_addr_start+{(latched_waddr-aes_addr_start)[31:4],4'b0}; //will become a wire
+						latched_custom_inp = temp;
+						input_switch <= 1;
+						r_cache_valid_in[temp[8:4]] <= 1;
+						latched_waddr_en = 0;
+						latched_wdata_en = 0;
+						mem_axi_bvalid <= 1;
+
+						if (latched_waddr < 128*1024) begin
+							if (latched_wstrb[0]) memory[latched_waddr >> 2][ 7: 0] <= latched_wdata[ 7: 0];
+							if (latched_wstrb[1]) memory[latched_waddr >> 2][15: 8] <= latched_wdata[15: 8];
+							if (latched_wstrb[2]) memory[latched_waddr >> 2][23:16] <= latched_wdata[23:16];
+							if (latched_wstrb[3]) memory[latched_waddr >> 2][31:24] <= latched_wdata[31:24];
+						end
+					end
+					else begin
+						mem_axi_bvalid <= 0;
+						latched_waddr_en = 1;
+						latched_wdata_en = 1;
+					end
+				end else
 				if (latched_waddr < 128*1024) begin
 					if (latched_wstrb[0]) memory[latched_waddr >> 2][ 7: 0] <= latched_wdata[ 7: 0];
 					if (latched_wstrb[1]) memory[latched_waddr >> 2][15: 8] <= latched_wdata[15: 8];
@@ -216,26 +247,31 @@ module axi4_mem_periph #(
 					if (latched_wstrb[3]) memory[latched_waddr >> 2][31:24] <= latched_wdata[31:24];
 				end
 
-				if ((latched_waddr >=aes_dest_addr) && (latched_waddr < aes_dest_addr_end)) begin//check signs
+				if ((latched_waddr >= aes_dest_addr) && (latched_waddr < aes_dest_addr_end)) begin//check signs
 				//w_cache needs to store only 10bits of addr if burst = 255 and one bit for validity
-					w_cache_addr <= latched_waddr;
-					w_cache_strb <=  latched_wstrb;
+					w_cache_addr[latched_waddr[8:4]] <= latched_waddr[13:9];
+					w_cache_strb[latched_waddr[8:4]] <=  latched_wstrb;
 				end else
-			
-				if ((latched_waddr >=aes_addr_start+128) && (latched_waddr < aes_addr_end)) begin
-					$display("WARNING:write happpening in yet to be read data");
-					//can write here or be skipped (see wait maybe)
-					
-				end 
-			end else
-			if (latched_warb_send) begin
-				if (latched_waddr < 128*1024) begin //may not be needed
+
+			end else begin
+				if ((w_cache_addr[latched_waddr[8:4]] == latched_waddr[13:9]) && (|w_cache_strb[latched_waddr[8:4]])) begin
+					if (~w_cache_strb[0]) memory[latched_waddr >> 2][ 7: 0] <= latched_wdata[ 7: 0];
+					if (~w_cache_strb[1]) memory[latched_waddr >> 2][15: 8] <= latched_wdata[15: 8];
+					if (~w_cache_strb[2]) memory[latched_waddr >> 2][23:16] <= latched_wdata[23:16];
+					if (~w_cache_strb[3]) memory[latched_waddr >> 2][31:24] <= latched_wdata[31:24];
+
+					w_cache_strb <= 4'b0;
+				end
+				else begin
 					if (latched_wstrb[0]) memory[latched_waddr >> 2][ 7: 0] <= latched_wdata[ 7: 0];
 					if (latched_wstrb[1]) memory[latched_waddr >> 2][15: 8] <= latched_wdata[15: 8];
 					if (latched_wstrb[2]) memory[latched_waddr >> 2][23:16] <= latched_wdata[23:16];
 					if (latched_wstrb[3]) memory[latched_waddr >> 2][31:24] <= latched_wdata[31:24];
 				end
+				
 				latched_warb_send = 0;
+				latched_waddr_en = 0;
+				latched_wdata_en = 0;
 			end
 		end
 
@@ -251,70 +287,101 @@ module axi4_mem_periph #(
 				$fflush();
 `endif
 				end
+				latched_waddr_en = 0;
+				latched_wdata_en = 0;
+				mem_axi_bvalid <= 1;
 			end else
 		// address below used by assembly in start.S - we are not using this
 		if (latched_waddr == 32'h2000_0000) begin
 			if (latched_wdata == 1)
 				tests_passed = 1;
+
+			latched_waddr_en = 0;
+			latched_wdata_en = 0;
+			mem_axi_bvalid <= 1;
 		end else 
 		// Changed the target address for the 'all pass' so that it can be written from C
 		if (latched_waddr == 32'h2100_0000) begin
 			if (latched_wdata == 1)
 				tests_passed = 1;
+
+				latched_waddr_en = 0;
+				latched_wdata_en = 0;
+				mem_axi_bvalid <= 1;
 		end else 
 		//// Sequential multiplier's inputs are given here
-		if (latched_waddr 
-			 32'h3000_0000) begin
+		if (latched_waddr == 32'h3000_0000) begin
 			$display("Writing %3d to the reset signal", latched_wdata);
 			reset_M <= latched_wdata[0];
+
+			latched_waddr_en = 0;
+			latched_wdata_en = 0;
+			mem_axi_bvalid <= 1;
 		end else 
 		if (latched_waddr == 32'h3000_0004) begin
 			$display("Writing %3d to mult 'a' input", latched_wdata);
 			a_M <= latched_wdata;
+
+			latched_waddr_en = 0;
+			latched_wdata_en = 0;
+			mem_axi_bvalid <= 1;
 		end else 
 		if (latched_waddr == 32'h3000_0008) begin 
 			$display("Writing %3d to mult 'b' input", latched_wdata);
 			b_M <= latched_wdata;
+
+			latched_waddr_en = 0;
+			latched_wdata_en = 0;
+			mem_axi_bvalid <= 1;
 		end 
 		////
 		else begin
 			$display("OUT-OF-BOUNDS MEMORY WRITE TO %08x", latched_waddr);
 			$finish;
 		end
-		mem_axi_bvalid <= 1;
-		latched_waddr_en = 0;
-		latched_wdata_en = 0;
-	end endtask
-
-	task my_arb_en; begin
-		aes_out <= ciphertext;
-		if (!(latched_waddr_en || latched_wdata_en)) begin
-			latched_warb_pass = 1;
-			out_ready <= 1'b0;
-		end
+		//mem_axi_bvalid <= 1;
+		//latched_waddr_en = 0;
+		//latched_wdata_en = 0;
 	end endtask
 
 	task my_w_arb; begin
-		mem_axi_wready <= 1; //check!!
-		mem_axi_awready <= 1;
 		latched_wdata = aes_out[counter];
 		latched_wstrb = 4'b1111;
 		latched_waddr = aes_dest_addr+(counter<<2); //check
 		latched_waddr_en = 1;
 		latched_wdata_en = 1;
 		latched_warb_send = 1;
-		if (counter == 3) latched_war_pass = 0;
+		if (counter == 3) begin
+			latched_warb_en = 0;
+			out_ready <= 0;
+		end
 		counter <= counter + 1;
+	end endtask
+
+	task my_arb_en; begin
+		if (!latched_warb_en) begin
+			if (out_ready) begin
+				aes_out <=  ciphertext;
+				if (!(mem_axi_awvalid || mem_axi_wvalid)) //here basically checking if other masters related to cpu are active
+					latched_warb_en = 1;
+			end
+		end
+		if (!latched_rarb_en) begin
+			if(in_enable) && (status)) begin //status tells if given inputs r ok or not
+				if(!mem_axi_arvalid)
+					latched_rarb_en = 1;
+			end
+		end
 	end endtask
 
 	always @(negedge clk) begin
 		if ((!latched_rar_en) && mem_axi_arvalid && !(latched_raddr_en || fast_raddr)) handle_axi_arvalid;
-		if ((!latched_warb_pass) && mem_axi_awvalid && !(latched_waddr_en || fast_waddr)) handle_axi_awvalid;
-		if ((!latched_warb_pass) && mem_axi_wvalid  && !(latched_wdata_en || fast_wdata)) handle_axi_wvalid;
+		if ((!latched_warb_en) && mem_axi_awvalid && !(latched_waddr_en || fast_waddr)) handle_axi_awvalid;
+		if ((!latched_warb_en) && mem_axi_wvalid  && !(latched_wdata_en || fast_wdata)) handle_axi_wvalid;
 		if (!mem_axi_rvalid && latched_raddr_en) handle_axi_rvalid;
 		if (!mem_axi_bvalid && latched_waddr_en && latched_wdata_en) handle_axi_bvalid;
-		if (arb_enn && (!latched_warb_pass) && (out_ready)) my_arb_en;
-		if ((!latched_warb_send) && (latched_warb_pass)) my_w_arb;
+		if (arb_en && (out_ready)) my_arb_en;
+		if ((latched_warb_en) && (!latched_warb_send)) my_w_arb;
 		if ((latched_rar_en) && (!latched_rarb_send)) my_r_arb;
 	end
 
@@ -360,4 +427,3 @@ module axi4_mem_periph #(
 		if (!mem_axi_bvalid && latched_waddr_en && latched_wdata_en) handle_axi_bvalid;
 	end
 endmodule
-
