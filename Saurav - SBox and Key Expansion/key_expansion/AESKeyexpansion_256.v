@@ -23,7 +23,9 @@ always @(*) begin
     if(start && i<8) begin
         if(i==0) subkey = short_key[255:128];
         else if(i==4) subkey = short_key[127:0];
-        else subkey = {key1, key2, key3, key4};
+    end
+    else begin
+        subkey = {key1, key2, key3, key4};
     end
 end
 
