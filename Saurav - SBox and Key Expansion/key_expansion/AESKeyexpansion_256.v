@@ -37,17 +37,18 @@ begin
        prev_period_key_2 <= 0;
        status <= 0;
     end
-    else begin
-        if(start && i<8) begin
+    else if(start | status) begin
+        if (i<8) begin
             i <= i+4;
             prev_period_key_1 <= short_key[255:128];
             prev_period_key_2 <= short_key[127:0];
             status <= 1;
         end
-        else if(status && i>=8 && i<56) begin
+        else if(i>=8 && i<56) begin
             prev_period_key_1 <= prev_period_key_2;
             prev_period_key_2 <= {key1,key2,key3,key4};
             i <= i+4;
+            status <= 1;
         end
         else if(i==56) begin
             i <= 0;
@@ -57,6 +58,7 @@ begin
         end
     end
 end
+
 endmodule
 
   
