@@ -11,12 +11,11 @@ reg [31:0] temp;
 always @(*)  
 begin
     case(i[2:0])
-    3'd0: temp = {sbox(prev_word[23:16]),sbox(prev_word[15:8]),sbox(prev_word[7:0]),sbox(prev_word[31:24])}^{rcon({1'b0,i[5:3]})};
+    3'd0: temp = {sbox(prev_word[23:16]),sbox(prev_word[15:8]),sbox(prev_word[7:0]),sbox(prev_word[31:24])}^{rcon({1'b0,i[5:3]}),24'd0};
     3'd4: temp = {sbox(prev_word[31:24]),sbox(prev_word[23:16]),sbox(prev_word[15:8]),sbox(prev_word[7:0])};
     default: temp = prev_word;
     endcase
-
-    assign current_word = (prev_period_word)^(temp);
+    current_word = (prev_period_word)^(temp);
 end
 
 function automatic [7:0] rcon;
