@@ -5,7 +5,7 @@ module current_word_gen_256(
     output [31:0] current_word
 );
 
-reg [31:0] current_word
+reg [31:0] current_word;
 reg [31:0] temp;
 
 always @(*)  

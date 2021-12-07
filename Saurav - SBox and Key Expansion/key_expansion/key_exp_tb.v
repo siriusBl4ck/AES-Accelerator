@@ -1,13 +1,10 @@
  module key_exp_tb;
-    reg [127:0] t [11:0];
     reg  clk = 0;
-    reg [9:0] cnt = 0;
+    reg [31:0] cnt = 0;
     reg start = 0;
     reg reset;
     
     initial begin
-        t[0] = 12;
-        t[1] = 10;
         short_key = 128'h2b7e151628aed2a6abf7158809cf4f3c;
         reset = 1'b1;
         start = 1'b0;
@@ -17,8 +14,8 @@
 
     reg [127:0] short_key;
     wire [127:0] subkey;
-    wire rdy;
     reg [127:0] res;
+    wire rdy;
     
     AESKeyexpansion_128 s1(clk, reset, start, short_key, subkey, rdy);
 
@@ -28,14 +25,14 @@
             start <= 1'b1;
         end
         else if (cnt >= 1 && cnt < 11) begin
+            start <=1'b0;
             res <= subkey;
         end
         else $finish;
-        cnt <= cnt + 1;
-        
+        cnt <= cnt + 1;    
     end
     
     always @(posedge clk) begin
-        $display("subkey no. %d -> %h ", cnt, subkey);
+        $display("subkey no. %d -> %h ", cnt, res);
     end
 endmodule
