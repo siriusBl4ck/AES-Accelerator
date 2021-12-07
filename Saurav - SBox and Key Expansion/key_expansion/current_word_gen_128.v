@@ -1,66 +1,38 @@
-parameter Nb = 4; //number of 32 bit words in each round key
-parameter Nk = 4; //number of 32 bit words in the main key
-parameter Nr = 11; //number of rounds
-
-module key_exp128(
-    input clk,
-    input [127:0] k,
-    output rdy,
-    output reg [127:0] rk [10:0]
+module current_word_gen_128(
+    input [5:0] i,
+    input [31:0] prev_word,
+    input [31:0] prev_period_word,
+    output [31:0] current_word
 );
-    reg [31:0] w [(Nb*(Nr + 1) - 1):0]; 
-    reg [31:0] cnt = 0;
-    reg [31:0] rcon [10:0];
 
-    initial begin
-        rcon[0] = 32'b0;
-        rcon[1] = 32'b1000000000000000000000000;
-        rcon[2] = 32'b10000000000000000000000000;
-        rcon[3] = 32'b100000000000000000000000000;
-        rcon[4] = 32'b1000000000000000000000000000;
-        rcon[5] = 32'b10000000000000000000000000000;
-        rcon[6] = 32'b100000000000000000000000000000;
-        rcon[7] = 32'b1000000000000000000000000000000;
-        rcon[8] = 32'b10000000000000000000000000000000;
-        rcon[9] = 32'b100000000000000000000000000000000;
-        rcon[10] = 32'b1000000000000000000000000000000000;
-    end
-    
-    always @(posedge clk) begin
-        rdy <= 0;
-        if (cnt < Nk) begin
-            w[cnt] <= k[(2*(cnt)*16 + 31):(2*cnt*16)];
-        end
-        else if (cnt < Nb*(Nr + 1)) begin
-            w[cnt] = temp(w[cnt - 1], w[cnt-Nk], cnt, rcon);
-        end
-        else rdy <= 1;
-        cnt <= cnt + 4;
-    end
+reg [31:0] current_word;
+reg [31:0] temp;
 
-function automatic [31:0] temp;
-    input [31:0] prev_w;
-    input [31:0] cnt_minus_Nk_w;
-    input [31:0] cnt;
-    input [31:0] rcon [10:0];
-    
+always @(*)  
+begin
+    case(i[1:0])
+    2'd0: temp = {sbox(prev_word[23:16]),sbox(prev_word[15:8]),sbox(prev_word[7:0]),sbox(prev_word[31:24])}^{rcon(i[5:2]), 24'b0};
+    default: temp = prev_word;
+    endcase
+
+    current_word = (prev_period_word)^(temp);
+end
+
+function automatic [7:0] rcon;
+    input [3:0] val;
     begin
-        if ((cnt % Nk) == 0) begin
-            temp = ({sbox(prev_w[23:16]), sbox(prev_w[15:8]), sbox(prev_w[7:0]), sbox(prev_w[31:24])} ^ rcon[cnt/Nb]) ^ cnt_minus_Nk_w;
-        end
-        else if ((Nk > 6) && (i % Nk == 4)) begin
-            temp = (sbox(prev_w)) ^ cnt_minus_Nk_w;
-        end
-        else temp = prev_w ^ cnt_minus_Nk_w;
-    end
-endfunction
-
-function automatic [7:0] rcon128;
-    input [31:0] cnt;
-
-    begin
-        case(cnt):
-            
+        case(val)
+        4'd1: rcon = 8'h01;
+        4'd2: rcon = 8'h02;
+        4'd3: rcon = 8'h04;
+        4'd4: rcon = 8'h08;
+        4'd5: rcon = 8'h10;
+        4'd6: rcon = 8'h20;
+        4'd7: rcon = 8'h40;
+        4'd8: rcon = 8'h80;
+        4'd9: rcon = 8'h1B;
+        4'd10: rcon = 8'h36;
+        default: ; 
         endcase
     end
 endfunction
@@ -199,4 +171,5 @@ function automatic [7:0] inv_isomorph_and_affine;
     inv_isomorph_and_affine[0] = ~(delta[0] ^ delta[5] ^ delta[6] ^ delta[7]);
     end
 endfunction
+
 endmodule

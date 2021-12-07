@@ -3,7 +3,7 @@ module AESKeyexpansion_256(
     input reset,
     input start,
     input [255:0] short_key,
-    output [127:0] subkey
+    output [127:0] subkey,
     output rdy
 );
 
