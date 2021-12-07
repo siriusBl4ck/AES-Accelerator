@@ -1,12 +1,14 @@
  module key_outer_tb;
     reg  clk = 0;
     reg reset = 1;
-    reg [1:0] aes_mode = 2'b00; //AES-128
+    reg [1:0] aes_mode = 2'b11; //AES-256
 
     // Set up clock
     always #5 clk <= ~clk;
 
-    reg [255:0] short_key = 128'h2b7e151628aed2a6abf7158809cf4f3c;
+    reg [255:0] short_key = 256'h603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4;
+    //128'h2b7e151628aed2a6abf7158809cf4f3c;
+    //192'h8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b;
     wire [127:0] subkey;
     reg [127:0] res;
     reg [31:0] cnt = 0;
@@ -18,10 +20,10 @@
 
     always @(posedge clk) begin
         if (cnt == 5) begin
-            reset <= 0;
+            reset <= 1;
         end
         else if (cnt > 5 && rdy) begin
-            reset = 1;
+            reset <= 0;
         end
         if (cnt < 100) cnt <= cnt + 1;
     end

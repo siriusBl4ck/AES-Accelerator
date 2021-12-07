@@ -34,7 +34,7 @@
     end
 
     AESKeyexpansion_128 s1(clk, rst128, start128, short_key[127:0], subkey128, rdy128);
-    //AESKeyexpansion_192 s2(clk, rst192, start192, short_key[191:0], subkey192, rdy192);
+    AESKeyexpansion_192 s2(clk, rst192, start192, short_key[191:0], subkey192, rdy192);
     AESKeyexpansion_256 s3(clk, rst256, start256, short_key, subkey256, rdy256);
 
 
@@ -66,11 +66,11 @@
                 end
                 else if (aes_mode == 2'b01) begin
                     key_mem[cnt-1] <= subkey192;
-                    $display("key_mem[%d] -> %h", cnt-5'd1, subkey192);
+                    $display("writing key_mem[%d] -> %h", cnt-5'd1, subkey192);
                 end
                 else begin
                     key_mem[cnt-1] <= subkey256;
-                    $display("key_mem[%d] -> %h", cnt-5'd1, subkey256);
+                    $display("writing key_mem[%d] -> %h", cnt-5'd1, subkey256);
                 end
 
                 cnt <= cnt + 1;

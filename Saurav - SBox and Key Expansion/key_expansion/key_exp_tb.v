@@ -1,22 +1,14 @@
-<<<<<<< HEAD
- module key_exp_tb;
-=======
 module key_exp_tb;
     reg [127:0] t [11:0];
->>>>>>> 3c32d7cdbb273ed72da39720d38943cfe1419697
     reg  clk = 0;
     reg [31:0] cnt = 0;
     reg start = 0;
     reg reset;
     
     initial begin
-<<<<<<< HEAD
-        short_key = 128'h2b7e151628aed2a6abf7158809cf4f3c;
-=======
         t[0] = 12;
         t[1] = 10;
         short_key = 192'h8e73b0f7da0e6452c810f32b809079e562f8ead2522c6b7b;
->>>>>>> 3c32d7cdbb273ed72da39720d38943cfe1419697
         reset = 1'b1;
         start = 1'b0;
     end
@@ -35,14 +27,6 @@ module key_exp_tb;
             reset <= 1'b0;
             start <= 1'b1;
         end
-<<<<<<< HEAD
-        else if (cnt >= 1 && cnt < 11) begin
-            start <=1'b0;
-            res <= subkey;
-        end
-        else $finish;
-        cnt <= cnt + 1;    
-=======
         else if (cnt == 1) begin
             res <= subkey;
         end
@@ -52,7 +36,6 @@ module key_exp_tb;
         else $finish;
         cnt <= cnt + 1;
  
->>>>>>> 3c32d7cdbb273ed72da39720d38943cfe1419697
     end
     
     always @(posedge clk) begin
