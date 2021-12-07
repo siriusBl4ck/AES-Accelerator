@@ -22,7 +22,7 @@ current_word_gen_256 word4(.i(i+6'd3),.prev_word(key3),.prev_period_word(prev_pe
 always @(*) begin
     case(i)
     6'd0: subkey = short_key[255:128];
-    6'd4: subkey = short_key[127:0];
+    6'd4: subkey = prev_period_key_2;
     default: subkey = {key1, key2, key3, key4};
     endcase
 end
@@ -38,10 +38,16 @@ begin
        status <= 0;
     end
     else if(start | status) begin
-        if (i<8) begin
+        if (i==0) begin
             i <= i+4;
             prev_period_key_1 <= short_key[255:128];
             prev_period_key_2 <= short_key[127:0];
+            status <= 1;
+        end
+        else if(i==4) begin
+            i <= i+4;
+            prev_period_key_1 <= prev_period_key_1;
+            prev_period_key_2 <= prev_period_key_2;
             status <= 1;
         end
         else if(i>=8 && i<56) begin
@@ -60,5 +66,3 @@ begin
 end
 
 endmodule
-
-  

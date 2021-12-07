@@ -1,4 +1,4 @@
-module current_word_gen_256(
+module current_word_gen_192(
     input [5:0] i,
     input [31:0] prev_word,
     input [31:0] prev_period_word,
@@ -10,13 +10,37 @@ reg [31:0] temp;
 
 always @(*)  
 begin
-    case(i[2:0])
-    3'd0: temp = {sbox(prev_word[23:16]),sbox(prev_word[15:8]),sbox(prev_word[7:0]),sbox(prev_word[31:24])}^{rcon({1'b0,i[5:3]}),24'd0};
-    3'd4: temp = {sbox(prev_word[31:24]),sbox(prev_word[23:16]),sbox(prev_word[15:8]),sbox(prev_word[7:0])};
+    case(i)
+    6'd6: temp = {sbox(prev_word[23:16]),sbox(prev_word[15:8]),sbox(prev_word[7:0]),sbox(prev_word[31:24])}^{rcon(quotient(i)),24'd0};
+    6'd12: temp = {sbox(prev_word[23:16]),sbox(prev_word[15:8]),sbox(prev_word[7:0]),sbox(prev_word[31:24])}^{rcon(quotient(i)),24'd0};
+    6'd18: temp = {sbox(prev_word[23:16]),sbox(prev_word[15:8]),sbox(prev_word[7:0]),sbox(prev_word[31:24])}^{rcon(quotient(i)),24'd0};
+    6'd24: temp = {sbox(prev_word[23:16]),sbox(prev_word[15:8]),sbox(prev_word[7:0]),sbox(prev_word[31:24])}^{rcon(quotient(i)),24'd0};
+    6'd30: temp = {sbox(prev_word[23:16]),sbox(prev_word[15:8]),sbox(prev_word[7:0]),sbox(prev_word[31:24])}^{rcon(quotient(i)),24'd0};
+    6'd36: temp = {sbox(prev_word[23:16]),sbox(prev_word[15:8]),sbox(prev_word[7:0]),sbox(prev_word[31:24])}^{rcon(quotient(i)),24'd0};
+    6'd42: temp = {sbox(prev_word[23:16]),sbox(prev_word[15:8]),sbox(prev_word[7:0]),sbox(prev_word[31:24])}^{rcon(quotient(i)),24'd0};
+    6'd48: temp = {sbox(prev_word[23:16]),sbox(prev_word[15:8]),sbox(prev_word[7:0]),sbox(prev_word[31:24])}^{rcon(quotient(i)),24'd0};
     default: temp = prev_word;
     endcase
     current_word = (prev_period_word)^(temp);
 end
+
+function automatic [3:0] quotient;
+    input [5:0] i;
+    begin
+        case(i)
+        6'd0: quotient = 4'd0;
+        6'd6: quotient = 4'd1;
+        6'd12: quotient = 4'd2;
+        6'd18: quotient = 4'd3;
+        6'd24: quotient = 4'd4;
+        6'd30: quotient = 4'd5;
+        6'd36: quotient = 4'd6;
+        6'd42: quotient = 4'd7;
+        6'd48: quotient = 4'd8;
+        default: ;
+        endcase
+    end
+endfunction
 
 function automatic [7:0] rcon;
     input [3:0] val;
