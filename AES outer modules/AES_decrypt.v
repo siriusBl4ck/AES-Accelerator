@@ -7,13 +7,14 @@ module AES_decrypt(
     input [127:0] ciphertext,
     output [127:0] plaintext,
     input [127:0] subkey,
+    input subkey_valid,
     output [3:0] subkey_addr
 );
 
     reg ready;
-    reg status;
+    reg [1:0] status;
     reg [127:0] plaintext;
-    reg [3:0] rounds;
+    reg [3:0] skey_addr;
 
     wire [127:0] output_1, invshiftrows_out;
     wire [127:0] invsubbytes_out, addkey_out, invmixcols_out;
@@ -21,7 +22,7 @@ module AES_decrypt(
     Addkey inst (ciphertext,subkey,output_1);
 
     wire [31:0] rowin1, rowin2, rowin3, rowin4;
-
+    assign subkey_addr = skey_addr;
     assign rowin1 = {plaintext[127:120], plaintext[95:88], plaintext[63:56], plaintext[31:24]};
     assign rowin2 = {plaintext[119:112], plaintext[87:80], plaintext[55:48], plaintext[23:16]};
     assign rowin3 = {plaintext[111:104], plaintext[79:72], plaintext[47:40], plaintext[15:8]};
@@ -44,29 +45,46 @@ module AES_decrypt(
         if(reset) begin
             ready <= 0;
             plaintext <= 0;
-            rounds <= 0;
+            skey_addr <= 0;
             status <= 0;
         end
         else if((|key_len) && (start) && (~status)) begin
             ready <= 0;
             status <= 1;
-            plaintext <= output_1;
             case(key_len)
             2'b00: ;
-            2'b01: rounds <= 4'd10;
-            2'b10: rounds <= 4'd12;
-            2'b11: rounds <= 4'd14;
+            2'b01: begin
+                skey_addr <= 10;
+            end
+            2'b10: begin
+                skey_addr <= 12;
+            end
+            2'b11: begin
+                skey_addr <= 14;
+            end
             endcase
         end
-        else if(rounds>1) begin
-            rounds <= rounds-1;
-            plaintext <= invmixcols_out;
+        else if (status==1) begin
+            if (subkey_valid) begin
+                plaintext <= output_1;
+                skey_addr <= skey_addr-1;
+                status <= 2;
+            end
         end
-        else if(rounds==1) begin
-            ready <= 1;
-            status <= 0;
-            plaintext <= addkey_out;
+        else if (status == 2) begin
+            if (subkey_valid) begin
+                skey_addr <= skey_addr-1;
+                
+                if (skey_addr==0) begin
+                    status <= 0;
+                    ready <= 1;
+                    plaintext <= addkey_out;
+                end
+                else plaintext <= invmixcols_out;
+            end
         end
     end
-
 endmodule
+
+
+
