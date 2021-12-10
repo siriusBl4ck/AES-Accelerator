@@ -1,4 +1,4 @@
-# Project: AES-Accelerator
+# EE2003 Final Project: AES-Accelerator
 
 ## How to use the peripheral:
 1. The C code named **hello.c** is present inside the folder **firmware**. 
