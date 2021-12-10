@@ -1,10 +1,11 @@
 # EE2003 Final Project: AES-Accelerator
 
 ## How to use the peripheral:
-1. The C code named **hello.c** is present inside the folder **firmware**. 
-2. Test files named test1.c, test2.c are also provided for reference. These test files are provided to demonstrate the speedup the peripheral achieves over AES implementation using C.
-3. After understanding the test files, modify the hello.c file according to your needs.
-4. In this folder, run the command **"make"**.
+* The C code for testing the accelerator named **AES_mem_mapped.c** is present inside the folder **firmware**.
+* The pure C code for AES can be found in the file **aes.h**
+* Tests have been performed and the relevant files named **test1.c**, **test2.c** are also provided in **tests_with_aes** folder. These test files are provided to demonstrate the speedup the peripheral achieves over AES implementation using C.
+* After understanding the test files, modify the **AES_mem_mapped.c** file according to your needs.
+* In this folder, run the command **"make"**.
 
 ## Required compliers:
 * iverilog
